@@ -11,7 +11,12 @@ Ce fichier est lu par l'IA au début de chaque session. Il contient les décisio
 
 ## Décisions déjà prises
 
-- Stack : Next.js 16 (App Router, TypeScript, Tailwind) sur Vercel Hobby ; shadcn/ui ; Auth.js v5 (`next-auth@5.0.0-beta.32`, version épinglée) ; Resend ; Vercel Blob. Neon, Sentry et UptimeRobot restent à brancher.
+- Stack : Next.js 16 (App Router, Cache Components activé, TypeScript, Tailwind) sur Vercel Hobby ; shadcn/ui ; Auth.js v5 (`next-auth@5.0.0-beta.32`, version épinglée) ; Drizzle ORM sur Neon ; Resend ; Vercel Blob (magasin privé) ; ExchangeRate-API. Sentry et UptimeRobot restent à brancher.
+- Avec Cache Components, tout ce qui lit la session ou la base est rendu dans un `<Suspense>` : la page exporte un composant qui enveloppe un composant asynchrone.
+- Rôles : `admin` (crée, modifie, ajoute des fichiers) et `lecteur` (consulte). Chaque page et chaque action serveur appelle `exigerConnexion` ou `exigerRole` (`src/lib/autorisation.ts`) ; un refus est journalisé.
+- Règle métier : niveau de preuve d'un ingrédient selon son nombre de sources (0 non étayé, 1-2 exploratoire, 3+ étayé), dans `src/lib/niveau-preuve.ts`, testée.
+- Les données de démonstration sont fictives ; les titres de sources portent « (référence fictive) » et les liens ouvrent une recherche PubMed, jamais une fausse citation.
+- Le schéma évolue par migrations : modifier `src/db/schema.ts`, puis `npm run db:generate` et `npm run db:migrate`.
 - Les clés des services tiers vivent uniquement dans les variables d'environnement de Vercel. Les fichiers `.env*` ne sont jamais commités.
 - Les commits sont signés avec l'adresse GitHub masquée (`346317033+forwomen@users.noreply.github.com`), jamais une adresse personnelle.
 - Chaque changement passe par une branche et sa prévisualisation Vercel avant d'être fusionné dans `main`.
