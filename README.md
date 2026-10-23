@@ -9,18 +9,22 @@ Outil de veille marché sur les produits alimentaires pour le confort menstruel 
 
 | Partie | Rôle |
 | --- | --- |
-| `src/app/` | Écrans (liste, fiche, formulaires, connexion) et actions serveur |
+| `src/app/` | Écrans (liste, fiche, formulaires, connexion, comptes, invitation, mot de passe oublié) et actions serveur |
 | `src/auth.ts` | Auth.js : connexion par e-mail et mot de passe, rôle `admin` ou `lecteur` dans la session |
 | `src/lib/autorisation.ts` | Vérification des rôles côté serveur, appelée par chaque page et chaque action |
 | `src/lib/niveau-preuve.ts` | Règle métier : 0 source = non étayé, 1-2 = exploratoire, 3+ = étayé (testée) |
 | `src/lib/taux-change.ts` | Conversion du prix en euros via ExchangeRate-API (côté serveur, mise en cache 1 h) |
-| `src/lib/courriel.ts` | Courriel Resend à chaque produit créé |
+| `src/lib/courriel.ts` | Courriels Resend : produit créé, invitation, mot de passe oublié |
+| `src/lib/comptes.ts`, `src/lib/jetons.ts` | Invitations et liens de réinitialisation à usage unique (empreinte seule en base, règles testées) |
 | `src/app/api/pieces-jointes/` | Lien privé vers les fichiers stockés dans Vercel Blob (session obligatoire) |
-| `src/db/schema.ts` | Tables : produits, ingredients, sources, produit_ingredients, ingredient_sources, pieces_jointes, utilisateurs |
+| `src/db/schema.ts` | Tables : produits, ingredients, sources, produit_ingredients, ingredient_sources, pieces_jointes, utilisateurs, jetons |
 | `drizzle/` | Migrations SQL générées par Drizzle |
 | `scripts/seed.ts` | Jeu de données fictif rejouable |
+| `scripts/creer-admin.ts` | Création du premier administrateur sur une base vide |
 
 Rôles : **admin** crée, modifie, ajoute des fichiers et fait avancer le statut ; **lecteur** consulte seulement les produits publiés. Le cycle de vie est décrit dans [`docs/cycle-de-vie.md`](docs/cycle-de-vie.md). Toute tentative refusée est écrite dans les journaux (`acces_refuse`).
+
+Comptes : le premier administrateur se crée en ligne de commande (`npm run admin:creer`, refusé si un admin existe déjà) ; les suivants arrivent par invitation depuis la page **Comptes** (lien valable 7 jours, à usage unique). Mot de passe oublié : lien valable 1 heure, demandé depuis la page de connexion ou créé par un admin. Sans nom de domaine, Resend ne livre qu'à l'adresse du compte Resend : l'admin voit donc aussi le lien à l'écran, pour le transmettre à la main.
 
 ## Lancer en local (10 minutes)
 
@@ -41,6 +45,8 @@ npm run dev          # http://localhost:3000
 ```
 
 Comptes de démonstration : `admin@veille.test` et `lecteur@veille.test`, mots de passe dans `.env.seed.local`.
+
+Base vide, sans jeu de démonstration : `npm run db:migrate`, puis `npm run admin:creer` (adresse, nom, mot de passe ; rien ne s'affiche quand on tape le mot de passe).
 
 ## Variables d'environnement (Vercel)
 

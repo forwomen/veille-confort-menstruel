@@ -15,6 +15,13 @@
       "when": 1792767265148,
       "tag": "0001_statut_retire",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792776518214,
+      "tag": "0002_jetons",
+      "breakpoints": true
     }
   ]
 }
