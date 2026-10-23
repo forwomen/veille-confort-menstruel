@@ -1,5 +1,5 @@
 import "server-only";
-import { asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, countDistinct, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import {
   ingredientSources,
@@ -9,15 +9,38 @@ import {
   produits,
   sources,
 } from "@/db/schema";
-import type { Indication } from "@/lib/libelles";
+import type { Faits } from "@/lib/cycle-de-vie";
+import type { Indication, Statut } from "@/lib/libelles";
 import { niveauDePreuve } from "@/lib/niveau-preuve";
 
-export async function listerProduits(filtre: { indication?: Indication }) {
+// `visibles` vient du rôle de la personne connectée : c'est la base qui écarte le reste, pas l'écran.
+export async function listerProduits(filtre: {
+  visibles: readonly Statut[];
+  indication?: Indication;
+  statut?: Statut;
+}) {
   return db
     .select()
     .from(produits)
-    .where(filtre.indication ? eq(produits.indication, filtre.indication) : undefined)
+    .where(
+      and(
+        inArray(produits.statut, [...filtre.visibles]),
+        filtre.indication ? eq(produits.indication, filtre.indication) : undefined,
+        filtre.statut ? eq(produits.statut, filtre.statut) : undefined,
+      ),
+    )
     .orderBy(desc(produits.modifieLe));
+}
+
+// Pour une composition saisie (noms d'ingrédients), combien d'ingrédients et combien ont au moins une source.
+export async function faitsComposition(noms: string[]): Promise<Faits> {
+  if (noms.length === 0) return { ingredients: 0, ingredientsSources: 0 };
+  const [ligne] = await db
+    .select({ n: countDistinct(ingredientSources.ingredientId) })
+    .from(ingredientSources)
+    .innerJoin(ingredients, eq(ingredients.id, ingredientSources.ingredientId))
+    .where(inArray(ingredients.nom, noms));
+  return { ingredients: noms.length, ingredientsSources: ligne?.n ?? 0 };
 }
 
 export async function lireProduit(id: number) {
@@ -54,16 +77,22 @@ export async function lireProduit(id: number) {
     .where(eq(piecesJointes.produitId, id))
     .orderBy(desc(piecesJointes.creeLe));
 
+  const avecSources = composition.map((ingredient) => {
+    const sourcesIngredient = liens.filter((l) => l.ingredientId === ingredient.id);
+    return {
+      ...ingredient,
+      sources: sourcesIngredient,
+      niveau: niveauDePreuve(sourcesIngredient.length),
+    };
+  });
+
   return {
     produit,
-    ingredients: composition.map((ingredient) => {
-      const sourcesIngredient = liens.filter((l) => l.ingredientId === ingredient.id);
-      return {
-        ...ingredient,
-        sources: sourcesIngredient,
-        niveau: niveauDePreuve(sourcesIngredient.length),
-      };
-    }),
+    ingredients: avecSources,
+    faits: {
+      ingredients: avecSources.length,
+      ingredientsSources: avecSources.filter((i) => i.sources.length > 0).length,
+    } satisfies Faits,
     fichiers,
   };
 }

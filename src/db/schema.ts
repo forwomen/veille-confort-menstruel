@@ -23,6 +23,7 @@ export const statutProduit = pgEnum("statut_produit", [
   "repere",
   "qualifie",
   "publie",
+  "retire",
 ]);
 
 export const typeSource = pgEnum("type_source", [

@@ -78,6 +78,8 @@ const PRODUITS: {
   { nom: "Lait d'or, tisane d'allaitement", marque: "Mamaterra", pays: "Espagne", indication: "post_partum", statut: "repere", prix: "18.00", devise: "EUR", ingredients: ["Fenugrec", "Fenouil", "Ortie"] },
   { nom: "Sérénité 45+, comprimés", marque: "Ménoverte", pays: "France", indication: "menopause", statut: "publie", prix: "22.90", devise: "EUR", ingredients: ["Isoflavones de soja", "Sauge", "Houblon", "Calcium", "Vitamine D"] },
   { nom: "Hot Flash Tea", marque: "Verdant Leaf Co.", pays: "États-Unis", indication: "menopause", statut: "qualifie", prix: "14.99", devise: "USD", ingredients: ["Trèfle rouge", "Sauge", "Houblon"] },
+  // Produit qui n'est plus suivi : seul l'admin le voit encore.
+  { nom: "Lune Rousse, ampoules", marque: "Ferrovia", pays: "Italie", indication: "post_partum", statut: "retire", prix: "16.40", devise: "EUR", ingredients: ["Fer", "Vitamine B12"] },
   // Cas limite : produit tout juste repéré, sans prix ni composition connue.
   { nom: "Pausa Femina, sirop", marque: "Vitalba", pays: "Italie", indication: "menopause", statut: "repere", prix: null, devise: null, ingredients: [] },
 ];

@@ -11,6 +11,7 @@ export const STATUTS = {
   repere: "Repéré",
   qualifie: "Qualifié",
   publie: "Publié",
+  retire: "Retiré",
 } as const;
 
 export const TYPES_SOURCE = {
@@ -24,6 +25,10 @@ export const TYPES_SOURCE = {
 export type Indication = keyof typeof INDICATIONS;
 export type Statut = keyof typeof STATUTS;
 
+export function estStatut(valeur: unknown): valeur is Statut {
+  return typeof valeur === "string" && Object.hasOwn(STATUTS, valeur);
+}
+
 export function estIndication(valeur: unknown): valeur is Indication {
-  return typeof valeur === "string" && valeur in INDICATIONS;
+  return typeof valeur === "string" && Object.hasOwn(INDICATIONS, valeur);
 }

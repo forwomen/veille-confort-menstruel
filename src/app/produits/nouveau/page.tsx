@@ -17,6 +17,9 @@ async function NouveauProduit() {
   return (
     <>
       <h1 className="text-2xl font-semibold tracking-tight">Ajouter un produit</h1>
+      <p className="text-sm text-muted-foreground">
+        Le produit entre au statut « Repéré ». Vous le ferez avancer depuis sa fiche.
+      </p>
       <FormulaireProduit
         action={creerProduit}
         libelleBouton="Créer le produit"
