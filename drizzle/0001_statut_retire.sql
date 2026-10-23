@@ -1,0 +1,1 @@
+ALTER TYPE "public"."statut_produit" ADD VALUE 'retire';

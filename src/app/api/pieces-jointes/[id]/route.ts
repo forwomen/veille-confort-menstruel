@@ -2,11 +2,12 @@ import { get } from "@vercel/blob";
 import { eq } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { piecesJointes } from "@/db/schema";
+import { piecesJointes, produits } from "@/db/schema";
+import { estVisible } from "@/lib/cycle-de-vie";
 import { journal } from "@/lib/journal";
 
 // Lien privé : le fichier n'est jamais public, il est relu depuis Vercel Blob
-// seulement après vérification de la session.
+// seulement après vérification de la session et du droit de voir le produit auquel il est attaché.
 export async function GET(_requete: Request, { params }: RouteContext<"/api/pieces-jointes/[id]">) {
   const session = await auth();
   if (!session?.user) {
@@ -19,8 +20,25 @@ export async function GET(_requete: Request, { params }: RouteContext<"/api/piec
     return new Response("Introuvable.", { status: 404 });
   }
 
-  const [fichier] = await db.select().from(piecesJointes).where(eq(piecesJointes.id, id)).limit(1);
-  if (!fichier) return new Response("Introuvable.", { status: 404 });
+  const [ligne] = await db
+    .select({ fichier: piecesJointes, statut: produits.statut })
+    .from(piecesJointes)
+    .innerJoin(produits, eq(produits.id, piecesJointes.produitId))
+    .where(eq(piecesJointes.id, id))
+    .limit(1);
+  if (!ligne) return new Response("Introuvable.", { status: 404 });
+  const { fichier, statut } = ligne;
+
+  if (!estVisible(statut, session.user.role)) {
+    journal("acces_refuse", {
+      action: "telecharger_piece_jointe",
+      pieceJointeId: id,
+      utilisateurId: session.user.id,
+      role: session.user.role,
+      statut,
+    });
+    return new Response("Accès refusé.", { status: 403 });
+  }
 
   const blob = await get(fichier.cheminBlob, { access: "private" });
   if (!blob || blob.statusCode !== 200) return new Response("Introuvable.", { status: 404 });

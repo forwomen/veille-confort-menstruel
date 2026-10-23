@@ -20,7 +20,7 @@ Outil de veille marché sur les produits alimentaires pour le confort menstruel 
 | `drizzle/` | Migrations SQL générées par Drizzle |
 | `scripts/seed.ts` | Jeu de données fictif rejouable |
 
-Rôles : **admin** crée, modifie et ajoute des fichiers ; **lecteur** consulte seulement. Toute tentative refusée est écrite dans les journaux (`acces_refuse`).
+Rôles : **admin** crée, modifie, ajoute des fichiers et fait avancer le statut ; **lecteur** consulte seulement les produits publiés. Le cycle de vie est décrit dans [`docs/cycle-de-vie.md`](docs/cycle-de-vie.md). Toute tentative refusée est écrite dans les journaux (`acces_refuse`).
 
 ## Lancer en local (10 minutes)
 

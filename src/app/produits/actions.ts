@@ -2,13 +2,15 @@
 
 import { randomUUID } from "node:crypto";
 import { put } from "@vercel/blob";
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/db";
 import { ingredients, piecesJointes, produitIngredients, produits } from "@/db/schema";
 import { exigerRole } from "@/lib/autorisation";
 import { notifierNouveauProduit } from "@/lib/courriel";
+import { conditionNonRemplie, verifierTransition } from "@/lib/cycle-de-vie";
+import { faitsComposition, lireProduit } from "@/lib/donnees";
 import { journal } from "@/lib/journal";
 import { INDICATIONS, STATUTS } from "@/lib/libelles";
 
@@ -25,9 +27,6 @@ const schemaProduit = z
     pays: z.string().trim().min(2, "Le pays est obligatoire").max(80),
     indication: z.enum(Object.keys(INDICATIONS) as [keyof typeof INDICATIONS], {
       error: "Choisir une indication",
-    }),
-    statut: z.enum(Object.keys(STATUTS) as [keyof typeof STATUTS], {
-      error: "Choisir un statut",
     }),
     prix: z
       .string()
@@ -52,6 +51,14 @@ function lireFormulaire(formData: FormData) {
   return schemaProduit.safeParse(Object.fromEntries(formData));
 }
 
+function valeursDe(formData: FormData) {
+  const valeurs: Record<string, string> = {};
+  formData.forEach((valeur, cle) => {
+    if (typeof valeur === "string") valeurs[cle] = valeur;
+  });
+  return valeurs;
+}
+
 function erreursDe(
   resultat: z.ZodSafeParseError<unknown>,
   formData: FormData,
@@ -61,16 +68,12 @@ function erreursDe(
     const champ = String(probleme.path[0] ?? "formulaire");
     erreurs[champ] ??= probleme.message;
   }
-  const valeurs: Record<string, string> = {};
-  formData.forEach((valeur, cle) => {
-    if (typeof valeur === "string") valeurs[cle] = valeur;
-  });
-  return { erreurs, valeurs, message: "Le formulaire contient des erreurs." };
+  return { erreurs, valeurs: valeursDe(formData), message: "Le formulaire contient des erreurs." };
 }
 
-// Les ingrédients sont saisis séparés par des virgules ; ceux qui n'existent pas encore sont créés.
-async function enregistrerComposition(produitId: number, saisie: string) {
-  const noms = [
+// Les ingrédients sont saisis séparés par des virgules.
+function nomsDeComposition(saisie: string) {
+  return [
     ...new Set(
       saisie
         .split(",")
@@ -79,7 +82,10 @@ async function enregistrerComposition(produitId: number, saisie: string) {
         .map((n) => n.charAt(0).toUpperCase() + n.slice(1)),
     ),
   ];
+}
 
+// Ceux qui n'existent pas encore sont créés.
+async function enregistrerComposition(produitId: number, noms: string[]) {
   await db.delete(produitIngredients).where(eq(produitIngredients.produitId, produitId));
   if (noms.length === 0) return;
 
@@ -105,11 +111,12 @@ export async function creerProduit(
   if (!lu.success) return erreursDe(lu, formData);
 
   const { ingredients: composition, prix, devise, ...champs } = lu.data;
+  // Tout produit entre dans le cycle de vie par « repéré » ; la suite passe par changerStatut.
   const [produit] = await db
     .insert(produits)
-    .values({ ...champs, prix: prix || null, devise: devise || null })
+    .values({ ...champs, statut: "repere", prix: prix || null, devise: devise || null })
     .returning({ id: produits.id, nom: produits.nom, marque: produits.marque });
-  await enregistrerComposition(produit.id, composition);
+  await enregistrerComposition(produit.id, nomsDeComposition(composition));
 
   journal("produit_cree", { produitId: produit.id, utilisateurId: utilisateur.id });
   await notifierNouveauProduit(produit);
@@ -126,16 +133,62 @@ export async function modifierProduit(
   if (!lu.success) return erreursDe(lu, formData);
 
   const { ingredients: composition, prix, devise, ...champs } = lu.data;
-  const modifies = await db
+  const [actuel] = await db
+    .select({ statut: produits.statut })
+    .from(produits)
+    .where(eq(produits.id, id));
+  if (!actuel) return { message: "Ce produit n'existe plus." };
+
+  // Une modification ne doit pas faire sortir le produit des conditions de son statut actuel.
+  const noms = nomsDeComposition(composition);
+  const raison = conditionNonRemplie(actuel.statut, await faitsComposition(noms));
+  if (raison) {
+    return {
+      erreurs: { ingredients: `${raison} Changez d'abord le statut du produit.` },
+      valeurs: valeursDe(formData),
+      message: "Le formulaire contient des erreurs.",
+    };
+  }
+
+  await db
     .update(produits)
     .set({ ...champs, prix: prix || null, devise: devise || null, modifieLe: new Date() })
-    .where(eq(produits.id, id))
-    .returning({ id: produits.id });
-  if (modifies.length === 0) return { message: "Ce produit n'existe plus." };
-  await enregistrerComposition(id, composition);
+    .where(eq(produits.id, id));
+  await enregistrerComposition(id, noms);
 
   journal("produit_modifie", { produitId: id, utilisateurId: utilisateur.id });
   redirect(`/produits/${id}?message=modifie`);
+}
+
+export async function changerStatut(
+  id: number,
+  _etat: EtatFormulaire,
+  formData: FormData,
+): Promise<EtatFormulaire> {
+  const utilisateur = await exigerRole("admin", "changer_statut");
+  const fiche = await lireProduit(id);
+  if (!fiche) return { message: "Ce produit n'existe plus." };
+
+  const de = fiche.produit.statut;
+  const vers = formData.get("vers");
+  const verdict = verifierTransition(de, vers, fiche.faits);
+  if (!verdict.ok) {
+    journal("statut_refuse", { produitId: id, de, vers: String(vers), raison: verdict.raison });
+    return { message: verdict.raison };
+  }
+
+  // La condition « statut = de » évite d'écraser un changement fait entre-temps par un autre admin.
+  const changes = await db
+    .update(produits)
+    .set({ statut: vers as keyof typeof STATUTS, modifieLe: new Date() })
+    .where(and(eq(produits.id, id), eq(produits.statut, de)))
+    .returning({ id: produits.id });
+  if (changes.length === 0) {
+    return { message: "Le statut a changé entre-temps. Rechargez la page." };
+  }
+
+  journal("statut_change", { produitId: id, de, vers, utilisateurId: utilisateur.id });
+  redirect(`/produits/${id}?message=statut`);
 }
 
 const TYPES_ACCEPTES = ["application/pdf", "image/png", "image/jpeg", "image/webp"];

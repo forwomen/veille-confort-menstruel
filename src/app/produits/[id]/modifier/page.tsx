@@ -34,7 +34,6 @@ async function ModifierProduit({
           marque: produit.marque,
           pays: produit.pays,
           indication: produit.indication,
-          statut: produit.statut,
           prix: produit.prix?.replace(".", ",") ?? "",
           devise: produit.devise ?? "",
           ingredients: ingredients.map((i) => i.nom).join(", "),

@@ -1,23 +1,37 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { BadgeStatut } from "@/components/badge-statut";
 import { Chargement } from "@/components/chargement";
 import { FormulairePieceJointe } from "@/components/formulaire-piece-jointe";
+import { FormulaireStatut } from "@/components/formulaire-statut";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { exigerConnexion } from "@/lib/autorisation";
+import { exigerConnexion, refuser } from "@/lib/autorisation";
+import { TRANSITIONS, conditionNonRemplie, estVisible } from "@/lib/cycle-de-vie";
 import { lireProduit } from "@/lib/donnees";
-import { INDICATIONS, STATUTS, TYPES_SOURCE } from "@/lib/libelles";
+import { INDICATIONS, STATUTS, TYPES_SOURCE, type Statut } from "@/lib/libelles";
 import { LIBELLES_NIVEAU, type NiveauPreuve } from "@/lib/niveau-preuve";
 import { convertirEnEuros } from "@/lib/taux-change";
-import { ajouterPieceJointe } from "../actions";
+import { ajouterPieceJointe, changerStatut } from "../actions";
 
 const MESSAGES: Record<string, string> = {
   cree: "Produit créé. Une notification a été envoyée par courriel.",
   modifie: "Modifications enregistrées.",
   fichier: "Fichier ajouté.",
+  statut: "Statut mis à jour.",
 };
+
+const ORDRE: Statut[] = ["repere", "qualifie", "publie"];
+
+function libelleTransition(de: Statut, vers: Statut) {
+  if (vers === "retire") return "Retirer";
+  if (de === "retire") return "Réactiver (repéré)";
+  return ORDRE.indexOf(vers) > ORDRE.indexOf(de)
+    ? `Passer en « ${STATUTS[vers]} »`
+    : `Revenir à « ${STATUTS[vers]} »`;
+}
 
 const VARIANTE_NIVEAU: Record<NiveauPreuve, "default" | "secondary" | "outline"> = {
   etaye: "default",
@@ -44,8 +58,12 @@ async function FicheProduit({
   if (!fiche) notFound();
   const { message } = await searchParams;
 
-  const { produit, ingredients, fichiers } = fiche;
+  const { produit, ingredients, faits, fichiers } = fiche;
   const estAdmin = utilisateur.role === "admin";
+  // La fiche d'un produit non publié n'est pas seulement cachée de la liste : elle est refusée.
+  if (!estVisible(produit.statut, utilisateur.role)) {
+    refuser(utilisateur, "voir_produit", { produitId: produit.id, statut: produit.statut });
+  }
 
   return (
     <>
@@ -74,10 +92,26 @@ async function FicheProduit({
 
       <div className="flex flex-wrap gap-2">
         <Badge variant="secondary">{INDICATIONS[produit.indication]}</Badge>
-        <Badge variant={produit.statut === "publie" ? "default" : "outline"}>
-          {STATUTS[produit.statut]}
-        </Badge>
+        <BadgeStatut statut={produit.statut} />
       </div>
+
+      {estAdmin && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Cycle de vie</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <FormulaireStatut
+              action={changerStatut.bind(null, produit.id)}
+              choix={TRANSITIONS[produit.statut].map((vers) => ({
+                vers,
+                libelle: libelleTransition(produit.statut, vers),
+                bloque: conditionNonRemplie(vers, faits),
+              }))}
+            />
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

@@ -7,14 +7,13 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { INDICATIONS, STATUTS } from "@/lib/libelles";
+import { INDICATIONS } from "@/lib/libelles";
 
 export type ValeursProduit = {
   nom: string;
   marque: string;
   pays: string;
   indication: string;
-  statut: string;
   prix: string;
   devise: string;
   ingredients: string;
@@ -25,7 +24,6 @@ const VIDE: ValeursProduit = {
   marque: "",
   pays: "",
   indication: "",
-  statut: "repere",
   prix: "",
   devise: "EUR",
   ingredients: "",
@@ -80,22 +78,7 @@ export function FormulaireProduit({
           ))}
         </select>
       </Champ>
-      <Champ nom="statut" erreur={erreurs.statut} libelle="Statut">
-        <select
-          id="statut"
-          name="statut"
-          defaultValue={v.statut}
-          aria-invalid={!!erreurs.statut}
-          className={classeSelect}
-        >
-          {Object.entries(STATUTS).map(([valeur, libelle]) => (
-            <option key={valeur} value={valeur}>
-              {libelle}
-            </option>
-          ))}
-        </select>
-      </Champ>
-      <div className="grid grid-cols-[2fr_1fr] gap-3">
+      <div className="grid grid-cols-[2fr_1fr] gap-3 sm:col-span-2 sm:max-w-sm">
         <Champ nom="prix" erreur={erreurs.prix} libelle="Prix" aide="Facultatif, ex. 24,90">
           <Input id="prix" name="prix" inputMode="decimal" defaultValue={v.prix} aria-invalid={!!erreurs.prix} />
         </Champ>
@@ -106,6 +89,7 @@ export function FormulaireProduit({
       <div className="sm:col-span-2">
         <Champ
           nom="ingredients"
+          erreur={erreurs.ingredients}
           libelle="Ingrédients"
           aide="Séparés par des virgules, ex. Magnésium, Vitamine B6, Gingembre"
         >
