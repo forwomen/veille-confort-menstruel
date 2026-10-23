@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { auth, signOut } from "@/auth";
+import { signOut } from "@/auth";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { lireSession } from "@/lib/autorisation";
 
 export function EnTete() {
   return (
@@ -20,7 +21,7 @@ export function EnTete() {
 }
 
 async function ZoneUtilisateur() {
-  const session = await auth();
+  const session = await lireSession();
   if (!session?.user) {
     return (
       <Link href="/connexion" className="text-sm underline-offset-4 hover:underline">

@@ -1,4 +1,5 @@
 import "server-only";
+import { connection } from "next/server";
 import { redirect } from "next/navigation";
 import { auth, type Role } from "@/auth";
 import { journal } from "@/lib/journal";
@@ -6,8 +7,15 @@ import { journal } from "@/lib/journal";
 // Toutes les vérifications de rôle passent par ici, côté serveur.
 // Masquer un bouton à l'écran ne suffit pas : chaque page et chaque action appelle l'une de ces fonctions.
 
+// Seule porte d'accès à la session. Auth.js renouvelle le jeton à chaque lecture, ce qui tire une
+// valeur aléatoire : connection() dit à Next.js que c'est une lecture par requête, jamais pré-rendue.
+export async function lireSession() {
+  await connection();
+  return auth();
+}
+
 export async function exigerConnexion() {
-  const session = await auth();
+  const session = await lireSession();
   if (!session?.user) redirect("/connexion");
   return session.user;
 }

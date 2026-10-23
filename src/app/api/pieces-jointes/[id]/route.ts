@@ -1,15 +1,15 @@
 import { get } from "@vercel/blob";
 import { eq } from "drizzle-orm";
-import { auth } from "@/auth";
 import { db } from "@/db";
 import { piecesJointes, produits } from "@/db/schema";
+import { lireSession } from "@/lib/autorisation";
 import { estVisible } from "@/lib/cycle-de-vie";
 import { journal } from "@/lib/journal";
 
 // Lien privé : le fichier n'est jamais public, il est relu depuis Vercel Blob
 // seulement après vérification de la session et du droit de voir le produit auquel il est attaché.
 export async function GET(_requete: Request, { params }: RouteContext<"/api/pieces-jointes/[id]">) {
-  const session = await auth();
+  const session = await lireSession();
   if (!session?.user) {
     journal("acces_refuse", { action: "telecharger_piece_jointe", raison: "non_connecte" });
     return new Response("Connexion requise.", { status: 401 });
