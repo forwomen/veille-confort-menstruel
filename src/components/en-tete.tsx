@@ -32,6 +32,11 @@ async function ZoneUtilisateur() {
 
   return (
     <div className="flex items-center gap-3 text-sm">
+      {session.user.role === "admin" && (
+        <Link href="/comptes" className="underline-offset-4 hover:underline">
+          Comptes
+        </Link>
+      )}
       <span>{session.user.name}</span>
       <Badge variant={session.user.role === "admin" ? "default" : "secondary"}>
         {session.user.role === "admin" ? "Admin" : "Lecteur"}

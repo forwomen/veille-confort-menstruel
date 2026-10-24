@@ -87,7 +87,7 @@ const PRODUITS: {
 async function main() {
   console.log("Remise à zéro des tables…");
   await db.execute(sql`
-    TRUNCATE produit_ingredients, ingredient_sources, pieces_jointes, produits,
+    TRUNCATE jetons, produit_ingredients, ingredient_sources, pieces_jointes, produits,
              ingredients, sources, utilisateurs RESTART IDENTITY CASCADE
   `);
 

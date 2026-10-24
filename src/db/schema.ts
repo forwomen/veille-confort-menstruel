@@ -109,3 +109,26 @@ export const piecesJointes = pgTable("pieces_jointes", {
   taille: integer("taille").notNull(),
   creeLe: timestamp("cree_le", { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const typeJeton = pgEnum("type_jeton", ["invitation", "reinitialisation"]);
+
+// Liens à usage unique (invitation, mot de passe oublié). Seule l'empreinte SHA-256 du lien est
+// gardée : quelqu'un qui lit la base ne peut pas s'en servir.
+export const jetons = pgTable("jetons", {
+  id: serial("id").primaryKey(),
+  type: typeJeton("type").notNull(),
+  empreinte: varchar("empreinte", { length: 64 }).notNull().unique(),
+  email: varchar("email", { length: 255 }).notNull(),
+  // Invitation : le compte à créer.
+  nom: varchar("nom", { length: 120 }),
+  role: roleUtilisateur("role"),
+  // Réinitialisation : le compte concerné.
+  utilisateurId: integer("utilisateur_id").references(() => utilisateurs.id, {
+    onDelete: "cascade",
+  }),
+  creePar: integer("cree_par").references(() => utilisateurs.id, { onDelete: "set null" }),
+  expireLe: timestamp("expire_le", { withTimezone: true }).notNull(),
+  utiliseLe: timestamp("utilise_le", { withTimezone: true }),
+  annuleLe: timestamp("annule_le", { withTimezone: true }),
+  creeLe: timestamp("cree_le", { withTimezone: true }).notNull().defaultNow(),
+});

@@ -11,7 +11,8 @@
     "typecheck": "next typegen && tsc --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:seed": "tsx scripts/seed.ts"
+    "db:seed": "tsx scripts/seed.ts",
+    "admin:creer": "tsx scripts/creer-admin.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
