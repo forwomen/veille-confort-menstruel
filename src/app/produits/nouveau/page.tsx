@@ -1,12 +1,12 @@
 import { Suspense } from "react";
-import { Chargement } from "@/components/chargement";
+import { SqueletteFormulaire } from "@/components/chargement";
 import { FormulaireProduit } from "@/components/formulaire-produit";
 import { exigerRole } from "@/lib/autorisation";
 import { creerProduit } from "../actions";
 
 export default function PageNouveauProduit() {
   return (
-    <Suspense fallback={<Chargement />}>
+    <Suspense fallback={<SqueletteFormulaire />}>
       <NouveauProduit />
     </Suspense>
   );

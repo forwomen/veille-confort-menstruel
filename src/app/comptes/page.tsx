@@ -1,5 +1,6 @@
 import { Suspense } from "react";
-import { Chargement } from "@/components/chargement";
+import { SqueletteFormulaire, SqueletteListe } from "@/components/chargement";
+import { EtatVide } from "@/components/etat-vide";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +15,7 @@ import {
 import { exigerRole } from "@/lib/autorisation";
 import { listerComptes, listerInvitations } from "@/lib/comptes";
 import type { EtatJeton } from "@/lib/jetons";
+import { lireEtatSimule, simuler } from "@/lib/simulation";
 import { annulerInvitation, creerLienReinitialisation } from "./actions";
 import { BoutonReinitialisation } from "./bouton-reinitialisation";
 import { FormulaireInvitation } from "./formulaire-invitation";
@@ -27,7 +29,7 @@ const ETATS: Record<EtatJeton, { libelle: string; variante: "default" | "seconda
   annule: { libelle: "Annulée", variante: "destructive" },
 };
 
-export default function PageComptes() {
+export default function PageComptes({ searchParams }: PageProps<"/comptes">) {
   return (
     <>
       <h1 className="text-2xl font-semibold tracking-tight">Comptes</h1>
@@ -36,13 +38,13 @@ export default function PageComptes() {
           <CardTitle>Inviter une personne</CardTitle>
         </CardHeader>
         <CardContent>
-          <Suspense fallback={<Chargement />}>
+          <Suspense fallback={<SqueletteFormulaire texte="Chargement…" champs={3} />}>
             <Invitation />
           </Suspense>
         </CardContent>
       </Card>
-      <Suspense fallback={<Chargement texte="Chargement des comptes…" />}>
-        <Listes />
+      <Suspense fallback={<SqueletteListe texte="Chargement des comptes…" lignes={3} />}>
+        <Listes searchParams={searchParams} />
       </Suspense>
     </>
   );
@@ -53,9 +55,13 @@ async function Invitation() {
   return <FormulaireInvitation />;
 }
 
-async function Listes() {
+async function Listes({ searchParams }: Pick<PageProps<"/comptes">, "searchParams">) {
   await exigerRole("admin", "page_comptes");
-  const [comptes, invitations] = await Promise.all([listerComptes(), listerInvitations()]);
+  const simulation = lireEtatSimule((await searchParams).etat);
+  await simuler(simulation);
+  const [comptes, lues] = await Promise.all([listerComptes(), listerInvitations()]);
+  // La liste des comptes n'est jamais vide (l'admin qui regarde en fait partie) ; celle des invitations peut l'être.
+  const invitations = simulation === "vide" ? [] : lues;
 
   return (
     <>
@@ -101,7 +107,10 @@ async function Listes() {
         </CardHeader>
         <CardContent className="overflow-x-auto">
           {invitations.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Aucune invitation pour l&apos;instant.</p>
+            <EtatVide
+              titre="Aucune invitation pour l'instant."
+              texte="Invitez une personne avec le formulaire ci-dessus : son invitation apparaîtra ici, avec son état."
+            />
           ) : (
             <Table>
               <TableHeader>

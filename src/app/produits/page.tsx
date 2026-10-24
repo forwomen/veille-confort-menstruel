@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { BadgeStatut } from "@/components/badge-statut";
-import { Chargement } from "@/components/chargement";
+import { SqueletteListe } from "@/components/chargement";
+import { EtatVide } from "@/components/etat-vide";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import {
@@ -23,6 +24,7 @@ import {
   type Indication,
   type Statut,
 } from "@/lib/libelles";
+import { lireEtatSimule, simuler } from "@/lib/simulation";
 
 function lienFiltre(filtre: { indication?: Indication; statut?: Statut }) {
   const parametres = new URLSearchParams();
@@ -34,7 +36,7 @@ function lienFiltre(filtre: { indication?: Indication; statut?: Statut }) {
 
 export default function PageProduits({ searchParams }: PageProps<"/produits">) {
   return (
-    <Suspense fallback={<Chargement texte="Chargement des produits…" />}>
+    <Suspense fallback={<SqueletteListe texte="Chargement des produits…" />}>
       <ListeProduits searchParams={searchParams} />
     </Suspense>
   );
@@ -53,7 +55,9 @@ async function ListeProduits({
   // Un lecteur qui tape ?statut=repere dans l'adresse n'obtient rien de plus : le filtre est ignoré.
   const statut =
     estStatut(parametres.statut) && visibles.includes(parametres.statut) ? parametres.statut : undefined;
-  const liste = await listerProduits({ visibles, indication: filtre, statut });
+  const simulation = lireEtatSimule(parametres.etat);
+  await simuler(simulation);
+  const liste = simulation === "vide" ? [] : await listerProduits({ visibles, indication: filtre, statut });
 
   return (
     <>
@@ -91,13 +95,24 @@ async function ListeProduits({
       )}
 
       {liste.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
-          {filtre || statut
-            ? "Aucun produit ne correspond à ces filtres."
-            : estAdmin
-              ? "Aucun produit pour l'instant."
-              : "Aucun produit publié pour l'instant."}
-        </div>
+        filtre || statut ? (
+          <EtatVide
+            titre="Aucun produit ne correspond à ces filtres."
+            texte="Essayez une autre indication, ou effacez les filtres pour revoir toute la liste."
+            action={{ libelle: "Effacer les filtres", href: "/produits" }}
+          />
+        ) : estAdmin ? (
+          <EtatVide
+            titre="Aucun produit pour l'instant."
+            texte="Ajoutez le premier produit repéré : il entrera au statut « Repéré »."
+            action={{ libelle: "Ajouter un produit", href: "/produits/nouveau" }}
+          />
+        ) : (
+          <EtatVide
+            titre="Aucun produit publié pour l'instant."
+            texte="Les produits apparaissent ici dès qu'un admin les publie. Revenez plus tard."
+          />
+        )
       ) : (
         <div className="overflow-x-auto rounded-lg border">
           <Table>
