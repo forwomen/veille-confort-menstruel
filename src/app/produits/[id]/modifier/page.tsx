@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { Chargement } from "@/components/chargement";
+import { SqueletteFormulaire } from "@/components/chargement";
 import { FormulaireProduit } from "@/components/formulaire-produit";
 import { exigerRole } from "@/lib/autorisation";
 import { lireProduit } from "@/lib/donnees";
@@ -8,7 +8,7 @@ import { modifierProduit } from "../../actions";
 
 export default function PageModifierProduit({ params }: PageProps<"/produits/[id]/modifier">) {
   return (
-    <Suspense fallback={<Chargement />}>
+    <Suspense fallback={<SqueletteFormulaire texte="Chargement du produit…" />}>
       <ModifierProduit params={params} />
     </Suspense>
   );

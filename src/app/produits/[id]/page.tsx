@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { BadgeStatut } from "@/components/badge-statut";
-import { Chargement } from "@/components/chargement";
+import { SqueletteFiche } from "@/components/chargement";
 import { FormulairePieceJointe } from "@/components/formulaire-piece-jointe";
 import { FormulaireStatut } from "@/components/formulaire-statut";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,7 @@ import { TRANSITIONS, conditionNonRemplie, estVisible } from "@/lib/cycle-de-vie
 import { lireProduit } from "@/lib/donnees";
 import { INDICATIONS, STATUTS, TYPES_SOURCE, type Statut } from "@/lib/libelles";
 import { LIBELLES_NIVEAU, type NiveauPreuve } from "@/lib/niveau-preuve";
+import { lireEtatSimule, simuler } from "@/lib/simulation";
 import { convertirEnEuros } from "@/lib/taux-change";
 import { ajouterPieceJointe, changerStatut } from "../actions";
 
@@ -43,7 +44,7 @@ const euros = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR
 
 export default function PageProduit({ params, searchParams }: PageProps<"/produits/[id]">) {
   return (
-    <Suspense fallback={<Chargement texte="Chargement de la fiche…" />}>
+    <Suspense fallback={<SqueletteFiche />}>
       <FicheProduit params={params} searchParams={searchParams} />
     </Suspense>
   );
@@ -54,11 +55,17 @@ async function FicheProduit({
   searchParams,
 }: Pick<PageProps<"/produits/[id]">, "params" | "searchParams">) {
   const utilisateur = await exigerConnexion();
+  const { message, etat } = await searchParams;
+  const simulation = lireEtatSimule(etat);
+  await simuler(simulation);
   const fiche = await lireProduit(Number((await params).id));
   if (!fiche) notFound();
-  const { message } = await searchParams;
 
-  const { produit, ingredients, faits, fichiers } = fiche;
+  const { produit, faits } = fiche;
+  // ?etat=vide montre la fiche d'un produit encore sans composition, sans prix ni fichier.
+  const ingredients = simulation === "vide" ? [] : fiche.ingredients;
+  const fichiers = simulation === "vide" ? [] : fiche.fichiers;
+  const prix = simulation === "vide" ? null : produit.prix;
   const estAdmin = utilisateur.role === "admin";
   // La fiche d'un produit non publié n'est pas seulement cachée de la liste : elle est refusée.
   if (!estVisible(produit.statut, utilisateur.role)) {
@@ -118,12 +125,14 @@ async function FicheProduit({
           <CardTitle>Prix</CardTitle>
         </CardHeader>
         <CardContent>
-          {produit.prix && produit.devise ? (
+          {prix && produit.devise ? (
             <Suspense fallback={<p className="text-sm text-muted-foreground">Conversion en cours…</p>}>
-              <Prix montant={Number(produit.prix)} devise={produit.devise} />
+              <Prix montant={Number(prix)} devise={produit.devise} />
             </Suspense>
           ) : (
-            <p className="text-sm text-muted-foreground">Prix non renseigné.</p>
+            <p className="text-sm text-muted-foreground">
+              Prix non renseigné.{estAdmin && " Ajoutez-le avec « Modifier »."}
+            </p>
           )}
         </CardContent>
       </Card>
@@ -134,7 +143,10 @@ async function FicheProduit({
         </CardHeader>
         <CardContent>
           {ingredients.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Aucun ingrédient renseigné.</p>
+            <p className="text-sm text-muted-foreground">
+              Aucun ingrédient renseigné.
+              {estAdmin && " Ajoutez la composition avec « Modifier » : elle est nécessaire pour passer en « Qualifié »."}
+            </p>
           ) : (
             <ul className="flex flex-col divide-y">
               {ingredients.map((ingredient) => (
@@ -176,7 +188,9 @@ async function FicheProduit({
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           {fichiers.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Aucun fichier.</p>
+            <p className="text-sm text-muted-foreground">
+              Aucun fichier.{estAdmin && " Ajoutez une fiche technique ou une photo de l'étiquette ci-dessous."}
+            </p>
           ) : (
             <ul className="flex flex-col gap-1 text-sm">
               {fichiers.map((fichier) => (

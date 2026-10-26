@@ -22,7 +22,7 @@ Outil de veille marché sur les produits alimentaires pour le confort menstruel 
 | `scripts/seed.ts` | Jeu de données fictif rejouable |
 | `scripts/creer-admin.ts` | Création du premier administrateur sur une base vide |
 
-Rôles : **admin** crée, modifie, ajoute des fichiers et fait avancer le statut ; **lecteur** consulte seulement les produits publiés. Le cycle de vie est décrit dans [`docs/cycle-de-vie.md`](docs/cycle-de-vie.md). Toute tentative refusée est écrite dans les journaux (`acces_refuse`).
+Rôles : **admin** crée, modifie, ajoute des fichiers et fait avancer le statut ; **lecteur** consulte seulement les produits publiés. Le cycle de vie est décrit dans [`docs/cycle-de-vie.md`](docs/cycle-de-vie.md). Les quatre états de chaque écran (chargement, vide, données, erreur) sont décrits dans [`docs/etats-des-ecrans.md`](docs/etats-des-ecrans.md). Toute tentative refusée est écrite dans les journaux (`acces_refuse`).
 
 Comptes : le premier administrateur se crée en ligne de commande (`npm run admin:creer`, refusé si un admin existe déjà) ; les suivants arrivent par invitation depuis la page **Comptes** (lien valable 7 jours, à usage unique). Mot de passe oublié : lien valable 1 heure, demandé depuis la page de connexion ou créé par un admin. Sans nom de domaine, Resend ne livre qu'à l'adresse du compte Resend : l'admin voit donc aussi le lien à l'écran, pour le transmettre à la main.
 
